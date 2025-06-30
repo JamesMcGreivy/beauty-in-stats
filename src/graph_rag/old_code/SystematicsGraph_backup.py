@@ -78,85 +78,91 @@ class LHCbPaper():
         self.relationships = await self.extract_relationships(f"{self.abstract} \n {self.text}", self.entities)
 
     def get_abstract_classification_prompt(self, abstract):
-        return f"""You are a research scientist in the LHCb collaboration at CERN and particle physics expert.
-        
-        # TASK
-        
-        Classify LHCb physics analysis paper abstracts (not performance/instrumentation papers). Your classifications will power a RAG system for physics analysis recommendations using three categories:
+        return f"""You are a research scientist in the LHCb collaboration at CERN and a particle physics expert. You will be given an abstract from an LHCb analysis paper and extract the information described below.
 
-        1. PHYSICS FOCUS - The context of the analysis (similar to LHCb Physics Working Groups)
-        
-        Definitions: 
-            - 'Beauty decays': $B^+$, $B^0$, $B_s^0$, $B_c^+$, $\Lambda_b^0$, $\Xi_b^0$, $\Xi_b^-$, $\Omega_b^-$, $B^{{*0}}$, $B_s^{{*0}}$, $\Lambda_b^{{*0}}$, $\Xi_b^{{0}}$, $\Xi_b^{{-}}$ (charge conjugation implied)
-            - 'Charm decays': $D^+$, $D^0$, $D_s^+$, $\Lambda_c^+$, $\Xi_c^+$, $\Xi_c^0$, $\Omega_c^0$, $D^{{+}}$, $D^{{0}}$, $D_s^{{+}}$, $\Lambda_c^{{+}}$, $\Xi_c^{{*+}}$, $\Xi_c^{{*0}}$, $\Omega_c^{{*0}}$ (charge conjugation implied, excludes charmonia)
+        1. DECAYS
 
-        Allowed labels (choose up to THREE most relevant labels):
-        - `b->sll`: Beauty hadron decays with two same-generation leptons in the final state. Includes rare loop-suppressed penguin decays often used to probe New Physics, such as $B^+\\to K^{{+}} \mu^+ \mu^-$, $B_s^0 \\to \mu^+ \mu^-$, $B^0 \\to K^{{*0}} \mu^+ \mu^-$, $\Lambda_b^0 \\to \Lambda \mu^+ \mu^-$. These transitions are mediated by $b \to s \ell^+ \ell^-$ or $b \to d \ell^+ \ell^-$ FCNC processes.
+        Identify all particle decay channels. For each decay channel, provide the production method, parent particle(s), and children particle(s). You must select production methods and particles from the following lists:
+        - production: p-p, Pb-Pb, p-Pb, Xe-Xe, O-O, Pb-Ar, p-O
+        - particles: u, u~, d, d~, s, s~, c, c~, b, b~, t, t~, e-, e+, mu-, mu+, tau-, tau+, nu(e), nu(e)~, nu(mu), nu(mu)~, nu(tau), nu(tau)~, g, gamma, Z0, W+, W-, H0, pi0, pi+, pi-, eta, eta', K0, K~0, K+, K-, K*(892)0, K*(892)~0, K*(892)+, K*(892)-, rho(770)0, rho(770)+, rho(770)-, omega(782), phi(1020), J/psi(1S), psi(2S), psi(3770), Upsilon(1S), Upsilon(2S), Upsilon(3S), Upsilon(4S), D0, D~0, D+, D-, D*(2010)+, D*(2010)-, D*(2007)0, D*(2007)~0, D(s)+, D(s)-, D(s)*+, D(s)*-, B0, B~0, B+, B-, B(s)0, B(s)~0, B(c)+, B(c)-, p, p~, n, n~, Lambda, Lambda~, Lambda(b)0, Lambda(b)~0, Lambda(c)+, Lambda(c)~-, Sigma+, Sigma-, Sigma0, Sigma~+, Sigma~-, Sigma~0,  Xi0, Xi-, Xi~0, Xi~+, Xi(b)0, Xi(b)-, Xi(b)~0, Xi(b)~+, Xi(c)0, Xi(c)+, Xi(c)~0, Xi(c)~-, Omega-, Omega~+, Omega(b)-, Omega(b)~+, Omega(c)0, Omega(c)~0, chi(c0)(1P), chi(c1)(1P), chi(c2)(1P), chi(b0)(1P), chi(b1)(1P), chi(b2)(1P), eta(c)(1S), eta(b)(1S), X(1)(3872), X(2)(3872), Z(4430)+, Z(4430)-
         
-        - `c->sll`: Charm hadron decays with two same-generation leptons in the final state. Includes rare decays that are highly suppressed in the SM, such as $D^0 \\to \pi^+\pi^-e^+e^-$, $D^0 \\to \mu^+ \mu^-$, $\Lambda_c^+ \\to p \mu^+ \mu^-$, $D^+ \\to \pi^+ \mu^+ \mu^-$. These are mediated by $c \to u \ell^+ \ell^-$ FCNC processes and are excellent probes for New Physics.
-        
-        - `radiative_decays`: Heavy-flavor decays with at least one photon in the final state, such as $B^0 \\to K^{{*0}} \gamma$, $\Lambda_b^0 \\to \Lambda \gamma$, $D^0 \\to K^{{*0}} \gamma$. These are mediated by FCNC transitions like $b \to s \gamma$ or $c \to u \gamma$ and are sensitive to physics beyond the SM.
-        
-        - `spectroscopy`: Studies focused on exotic multi-quark (>3) QCD bound states including tetraquarks, pentaquarks, and molecular states. Includes both discovery and characterization of states like $T_{{cc}}^+$, $P_c(4450)^+$, or $X(3872)$. Also includes conventional spectroscopy of excited charm and beauty hadrons.
-        
-        - `semileptonic`: Heavy-flavor decays with a charged lepton and neutrino in the final state, such as $B \\to D^{{(*)}}\ell\\nu$ or $\Lambda_b \\to \Lambda_c^+ \ell^- \\nu$. These are mediated by tree-level $b \to c \ell^- \\nu$ transitions and are often used for $|V_{{cb}}|$ extraction or lepton flavor universality tests.
-        
-        - `lifetime`: Measurements of the lifetimes or lifetime ratios of heavy-flavored hadrons, which provide sensitive tests of the heavy quark expansion and inform theoretical understanding of strong interaction effects.
-        
-        - `electoweak`: Electroweak/Higgs physics including production and decay of $W$, $Z$, or Higgs bosons, tests of electroweak theory, and measurements of electroweak parameters such as the weak mixing angle $\sin^2 \theta_W$.
-        
-        - `dark_sector`: Searches for dark matter or dark sector particles such as dark photons, long-lived particles (LLPs), axion-like particles (ALPs), heavy neutral leptons (HNLs), or any other beyond-SM particles that could explain astrophysical anomalies.
-        
-        - `forbidden_decays`: Searches for decays forbidden or extremely suppressed in the Standard Model, including baryon/lepton number violation, lepton flavor violation, lepton universality violation tests, or other symmetry-breaking processes.
-        
-        - `jet_physics`: Studies of QCD jet production, jet properties, jet substructure, or measurements of strong coupling constant $\\alpha_s$. Includes both beauty and charm jets as well as light-flavor jets.
-        
-        - `heavy_ions`: Physics analyses using non-proton-proton collision data, such as lead-lead ($PbPb$) or proton-lead ($pPb$) collisions. Includes studies of quark-gluon plasma, collective effects, or nuclear modification factors.
-        
-        - `beauty`: General beauty hadron physics not covered by more specific categories. Includes studies of beauty hadron production, properties, branching fractions, form factors, hadronic decays, or other aspects of beauty hadron phenomenology.
-        
-        - `charm`: General charm hadron physics not covered by more specific categories. Includes studies of charm hadron production, properties, branching fractions, form factors, hadronic decays, or other aspects of charm hadron phenomenology.
-        
-        - `CP_asymmetry`: Measurements of CP violation or CP asymmetries in any heavy-flavor decay system. Includes direct and indirect CP asymmetries, mixing-induced CP violation, time-dependent CP violation studies, and extractions of CKM angles ($\\alpha$, $\\beta$, $\\gamma$) or CKM matrix elements.
+        You may need to use your knowledge as a particle physics expert when classifying. For a paper that "measures B_s \\to \\mu^+ \\mu^- and B_0 -> \\mu^+ \\mu^- in pp collisions" the "B_s" would be written as "B(s)0" because B_s (strange B-meson) corresponds to B(s)0 in the provided list of allowed particles.
 
-        2. RUN PERIOD - The LHCb data-taking period and dataset characteristics
+        2. RUN
 
-        - `Run1`: Data collected during 2011-2012 at center-of-mass energies of 7-8 TeV, corresponding to an integrated luminosity of approximately 3.0 fb-1.
-        - `Run2`: Data collected during 2015-2018 at a center-of-mass energy of 13 TeV, corresponding to an integrated luminosity of approximately 5.4-6 fb-1.
-        - `Run1+2`: Combined dataset from both Run 1 and Run 2 periods (2011-2018), with a total integrated luminosity of approximately 9 fb-1.
-        - `Run3`: Data collected during 2022-2025 at a center-of-mass energy of 13.6 TeV, with an expected integrated luminosity of approximately 15 fb-1 by the end of the period.
+        Identify the LHCb data-taking period or dataset characteristics
+        - "run1": Data collected during 2011-2012 at center-of-mass energies of 7-8 TeV
+        - "run2": Data collected during 2015-2018 at a center-of-mass energy of 13 TeV
+        - "run1,run2": Combined dataset from both Run 1 and Run 2 periods (2011-2018)
+        - "run3": Data collected during 2022-2025 at a center-of-mass energy of 13.6 TeV
+        - "ift": Any paper which does not use p-p as its production method.
 
-        3. ANALYSIS STRATEGY - The observable and statistical inference framework
+        3. STRATEGY
+        
+        Identify which of following labels best describes the analysis strategy employed in the paper.
 
-        - `angular_analysis`: Studies employing angular distributions or asymmetries such as forward-backward asymmetries, angular coefficients, or Wilson coefficient-related observables like $P_5'$. Typically involves multi-dimensional fits to angular variables to extract physics parameters.
-        
-        - `amplitude_analysis`: Analyses focused on decay amplitudes, including Dalitz plot analyses, determination of resonance structures, spin-parity assignments, or phase measurements. Usually involves modeling interfering amplitudes and extracting fit fractions or strong phases.
-        
-        - `search`: Analyses aimed at discovering unobserved states, processes, or symmetry-breaking effects, typically resulting in limit setting at 90% or 95% confidence level if no significant signal is observed. Includes searches for new particles, rare decays, or forbidden processes.
-        
-        - `direct_measurement`: Straightforward measurements of particle properties, decay observables, symmetries, or Standard Model parameters. Includes branching fraction measurements, production cross-sections, mass measurements, or other direct determinations of physical quantities.
+        - "angular_analysis": Studies that examine angular distributions or asymmetries in particle decays. These include forward-backward asymmetries, angular coefficients, or observables related to Wilson coefficients. These analyses typically perform multi-dimensional fits to angular variables to extract physics parameters and test Standard Model predictions.
 
-        # OUTPUT FORMAT
-        
-        Your response must follow this exact format:
+        - "amplitude_analysis": Studies focused on decay amplitude structures, including Dalitz plot analyses, determination of resonance properties, spin-parity assignments, or relative phase measurements. These analyses model interfering amplitudes and extract quantities such as fit fractions, strong phases, or resonance parameters.
+                
+        - "search": Analyses aimed at discovering previously unobserved states, processes, or symmetry-breaking effects. This includes first observations of rare decay modes, searches for new particles, or forbidden processes. Often results in significance measurements for new signals or limit setting at confidence levels (typically 90% or 95%) when no significant signal is observed.
+                
+        - "other": Any analysis that does not fall into the above three categories. This includes analyses primarily focused on precision measurements of established quantities, such as branching fraction determinations, lifetime measurements, production cross-sections, mass measurements.
+
+        Format your answer exactly as in the below example output. Do not respond with anything else.
+
+        # EXAMPLE - INPUT
+
+        Branching fractions of the decays $H_b\\to H_c\\pi^-\\pi^+\\pi^-$ relative to $H_b\\to H_c\\pi^-$ are presented, where $H_b$ ($H_c$) represents B^0-bar($D^+$), $B^-$ ($D^0$), B_s^0-bar ($D_s^+$) and $\\Lambda_b^0$ ($\\Lambda_c^+$). The measurements are performed with the LHCb detector using 35${{\\rm pb^{{-1}}}}$ of data collected at $\\sqrt{{s}}=7$ TeV. The ratios of branching fractions are measured to be B(B^0-bar -> D^+\\pi^-\\pi^+\\pi^-)/ B(B^0-bar -> D^+\\pi^-) = 2.38\\pm0.11\\pm0.21 B(B^- -> D^0\\pi^-\\pi^+\\pi^-) / B(B^- -> D^0\\pi^-) = 1.27\\pm0.06\\pm0.11 B(B_s^0-bar -> D_s^+\\pi^-\\pi^+\\pi^-) / B(B_s^0-bar -> D_s^+\\pi^-) = 2.01\\pm0.37\\pm0.20 B(\\Lambda_b^0->\\Lambda_c^+\\pi^-\\pi^+\\pi^-) / B(\\Lambda_b^0 -> \\Lambda_c^+\\pi^-) = 1.43\\pm0.16\\pm0.13. We also report measurements of partial decay rates of these decays to excited charm hadrons. These results are of comparable or higher precision than existing measurements.
+
+        # EXAMPLE - OUTPUT
         {{
-            "focus": "<label from physics focus>, ...",
-            "run": "<label from run period>, ...",
-            "strategy": "<label from analysis strategy>, ..."
-            "explanation" : "Justification of why these labels were extracted according to the prompt directions and your expert knowledge."
+            "explanation": "Since the production method is not explicitly mentioned, it is likely p-p. This paper studies H_b to H_c pi- pi+ pi- and H_b to H_c pi- for four different values of H_b (H_c). Using names from the provided list of particles: B^0-bar ($D^+$) becomes B~0 (D+), $B^-$ ($D^0$) becomes B- (D0), B_s^0-bar ($D_s^+$) becomes B(s)~0 (D(s)+), and $\\Lambda_b^0$ ($\\Lambda_c^+$) becomes Lambda(b)0 (Lambda(c)). The energy is 7 TeV, indicating run1. The paper reports precision measurements of branching fraction ratios, not a search, angular, or amplitude analysis, so strategy is 'other'.",
+            "decays": [
+                {{
+                    "production": "p-p",
+                    "parent": "B~0",
+                    "children": ["D+", "pi-", "pi+", "pi-"]
+                }},
+                {{
+                    "production": "p-p",
+                    "parent": "B~0",
+                    "children": ["D+", "pi-"]
+                }},
+                {{
+                    "production": "p-p",
+                    "parent": "B-",
+                    "children": ["D0", "pi-", "pi+", "pi-"]
+                }},
+                {{
+                    "production": "p-p",
+                    "parent": "B-",
+                    "children": ["D0", "pi-"]
+                }},
+                {{
+                    "production": "p-p",
+                    "parent": "B(s)~0",
+                    "children": ["D(s)+", "pi-", "pi+", "pi-"]
+                }},
+                {{
+                    "production": "p-p",
+                    "parent": "B(s)~0",
+                    "children": ["D(s)+", "pi-"]
+                }},
+                {{
+                    "production": "p-p",
+                    "parent": "Lambda(b)0",
+                    "children": ["Lambda(c)+", "pi-", "pi+", "pi-"]
+                }},
+                {{
+                    "production": "p-p",
+                    "parent": "Lambda(b)0",
+                    "children": ["Lambda(c)+", "pi-"]
+                }}
+            ],
+            "run": "run1",
+            "strategy": "other"
         }}
-
-        # IMPORTANT CLASSIFICATION GUIDELINES:
-        
-        1. Papers can have MULTIPLE FOCUS labels - choose up to THREE most relevant ones
-        2. For papers studying rare decays with CP asymmetry measurements, include BOTH the decay type label (e.g., `c->sll`) AND `CP_asymmetry`
-        3. For charm baryon decays, always include the `charm` label
-        4. For beauty baryon decays, always include the `beauty` label
-        5. If a paper doesn't clearly fit any specific focus category, choose the hadron type (`charm` or `beauty`) plus the most relevant measurement type
-        6. Be attentive to the actual physics goals of the paper, not just the decay mentioned - a paper studying $B^+ \\to K^+ \mu^+ \mu^-$ could be a `b->sll` study or it could be focused on `CP_asymmetry` or both
-        7. For Run period, choose the specific data-taking period(s) explicitly mentioned in the abstract
-
-        Do not mix labels between categories. Use <PERF> for all categories if it's a performance paper. Only use labels with medium/high confidence. Use <UNK> for low-confidence categories.
 
         # INPUT
 
@@ -184,76 +190,77 @@ class LHCbPaper():
     def get_entity_extraction_prompt(self, text):
         return f"""# Systematic Uncertainty Knowledge Graph - Entity Extraction
 
-        You are an expert physicist specialized in extracting structured knowledge about systematic uncertainties from particle physics publications. Your task is to identify and extract all relevant entities related to systematic uncertainties from the provided text.
+        You are an expert physicist specialized in extracting entities for a knowledge graph of systematic uncertainties in particle physics publications. Your task is to identify and extract all relevant entities related to systematic uncertainties from the provided text.
 
         # ENTITY TYPES AND PROPERTIES
 
-        1. Uncertainty Sources
-        Categorize each uncertainty source using these precise definitions:
-        - **Experimental**: Uncertainties from measurement apparatus, detector performance, calibration, or data collection. Examples: detector efficiency, resolution effects, instrument calibration.
-        - **Methodological**: Uncertainties from analysis techniques, fitting procedures, binning strategies, or data processing choices. Examples: model selection, bin migration, background subtraction.
-        - **Theoretical**: Uncertainties from theoretical assumptions, external input parameters, or modeling choices. Examples: branching ratios, hadronization models, polarization assumptions.
-        For each uncertainty source, extract:
-        - `name`: The specific uncertainty source (standardized terminology)
-        - `description`: In one or two sentences, summarize any descriptions or explanations of this method provided in the paper.
-        - `type`: Experimental/Methodological/Theoretical
+        1. Observable
 
-        2. Measurements/Observables
-        Extract all physical quantities being measured or derived from experimental data (ex: CKM mixing angles, branching ratios, CP violation parameters, differential cross-sections, particle masses, particle lifetimes, etc.)
-        - `name`: Standardized measurement name
-        - `value`: Numerical value given in the text with units included
-        - `statistical_uncertainty`: Numerical value of complete statistical uncertainty with units included
-        - `systematic_uncertainty`: Numerical value of complete systematic uncertainty with units included
-        - `additional_uncertainty`: Numerical value of other uncertainties with units included (e.g., polarization)
+        Identify all physical quantities which are being measured or derived from experimental data in the paper (ex: CKM mixing angles, branching ratios, CP violation parameters, differential cross-sections, particle masses, particle lifetimes, etc.). Although some papers measure the same observable across multiple kinematic bins, only one entity should be extracted regardless of the number of bins (ex: an observable may be measured for several di-muon invariant masses, but you should only create one entity). Do not include broad physics questions motivating the analysis such as lepton universality, matter-antimatter asymmetry, etc.
 
-        3. Estimation Methods
-        Extract all analysis methods or mathematical techniques used in the paper to reduce, estimate, or otherwise evaluate uncertainties for a measurement.
-        - `name`: Method name (use standardized terminology)
-        - `description`: In one or two sentences, summarize any descriptions or explanations of this method provided in the paper.
+        Categorize observable according to the following definitions:
+        - "branching_fraction": Often explicitly called a branching fraction. Ex: B(B^- -> D^0\\pi^-\\pi^+\\pi^-)
+        - "branching_ratio": Often explicitly called a branching fraction ratio. Ex: B(B_s^0-bar -> D_s^+\\pi^-\\pi^+\\pi^-) / B(B_s^0-bar -> D_s^+\\pi^-)
+        - "physical_constant": Any fundamental physics parameter that is not a branching fraction. Ex: CP-violating phase (gamma), CKM angles, wilson coefficients, particle lifetimes, etc.
+        - "angular_observable": This is any observable coming from an angular analysis. Ex: asymmetries in angular distributions, polarization fractions, or helicity amplitudes.
+        - "functional_dependence": This refers to observables that are measured as a function of kinematic variables. Ex: distribution of p_T for a specific B-hadron, differential cross sections as a function of rapidity, form factors as a function of q^2, or resonance structures in invariant mass distributions.
+
+        2. Uncertainty Source
+
+        Identify all sources of uncertainty described in the paper which affect the measured values of any of the observables extracted above.
+        
+        Categorize the uncertainty source according to the following definitions:
+        - "statistical": An uncertainty resulting from variability in the measured data due to random fluctuations or sampling limitations.
+        - "internal": An uncertainty that is the result of choices made by the authors while performing the analysis, such as choices in reconstruction, modelling of the efficiencies, treatment of the background, etc. Usually related to the LHCb experiment itself, the reconstruction, or the analysis techniques used.
+        - "external": An uncertainty related to external inputs to the analysis, such as values taken from a theoretical calculation or a previous measurement which was not done in this analysis. This uncertainty could not be improved by changing anything about the analysis. Ex: using the mass of the phi resonance from the PDG world average or using the PDG branching ratio for B(B0 -> D- pi+) as input when normalizing a rare B-meson decay.
+
+        3. Method
+
+        Identify all mentioned methods, techniques, general strategies, etc used in the paper to estimate or otherwise evaluate the impact of systematic uncertainties upon a measurement.
 
         # EXTRACTION PRINCIPLES
 
-        1. **Comprehensive Coverage**: Extract ALL entities which fit the above descriptions. When in doubt, include it.
+        1. Comprehensive Coverage: Extract ALL entities which fit the above descriptions. When in doubt, include it.
 
-        2. **Precision**: Maintain exact numerical values with proper units and distinguish between absolute/relative uncertainties.
+        2. Precision: Maintain exact numerical values with proper units and distinguish between absolute/relative uncertainties.
 
-        3. **Completeness**: Ensure all entity properties are filled with the most specific and relevant information available.
+        3. Completeness: Ensure all entity properties are filled with the most specific and relevant information available.
 
-        4. **Standardization**: Use consistent terminology across entities.
+        4. Standardization: Use consistent terminology across entities.
 
-        5. **Context Preservation**: Note when measurements apply only to specific kinematic regions or conditions.
+        5. Context Preservation: Note when measurements apply only to specific kinematic regions or under specific conditions.
+
+        6. Concise Naming: The "name" field should be as concise as possible while capturing the full meaning of the entity.
 
         # OUTPUT FORMAT
 
-        Provide your extraction as a Python dictionary with this structure:
-
+        Provide your extraction as a Python dictionary with this exact structure:
         {{
-        "Uncertainty Sources": [
+        "observable": [
         {{
+        "description" : str,
         "name": str,
-        "description": str,
-        "type": str
+        "type": <"branching_fraction", "branching_ratio", "physical_constant", "angular_observable", "functional_dependence">
         }},
         ...
         ],
-        "Measurements/Observables": [
+        "uncertainty_source": [
         {{
+        "description" : str,
         "name": str,
-        "value": str,
-        "statistical_uncertainty": str,
-        "systematic_uncertainty": str,
-        "additional_uncertainty": str
+        "type": <"statistical", "internal", "external">
         }},
         ...
         ],
-        "Estimation Methods": [
+        "method": [
         {{
+        "description" : str,
         "name": str,
-        "description": str
         }},
         ...
         ]
         }}
+        Do not provide anything else in your output.
 
         # INPUT
 
@@ -277,51 +284,19 @@ class LHCbPaper():
     def get_relationship_extraction_prompt(self, text, entities):
         return f"""# Systematic Uncertainty Knowledge Graph - Relationship Extraction
 
-        You are an expert physicist specialized in extracting structured knowledge about systematic uncertainties from particle physics publications. Your task is to identify all relationships between the provided entities based on the provided text.
+        You are an expert physicist tasked with extracting relationships for a knowledge graph of systematic uncertainties in particle physics publications. You will be given the text from a particle physics paper, as well as a list of entities (nodes) from the knowledge graph. Your task is to read the paper and identify new relationships connecting nodes in the knowledge graph.
 
         # RELATIONSHIP TYPES
-
-        Uncertainty Source affects Measurement/Observable:
-        - `type`: "AFFECTS"
-        - `source`: Uncertainty Sources - The name of the uncertainty source that impacts the measurement
-        - `target`: Measurements/Observables - The specific measurement being affected
-        - `magnitude`: The quantitative impact expressed as a percentage, absolute value, or relative contribution (if specified in the paper)
-
-        Uncertainty Source dominates Measurement/Observable:
-        - `type`: "DOMINATES"
-        - `source`: Uncertainty Sources - The primary uncertainty source with largest impact
-        - `target`: Measurements/Observables - The measurement for which this uncertainty is dominant
-        - `magnitude`: N/A (implied to be the largest contribution)
-
-        Uncertainty Source is correlated with Uncertainty Source:
-        - `type`: "CORRELATED_WITH"
-        - `source`: Uncertainty Sources - The first uncertainty source in the correlation
-        - `target`: Uncertainty Sources - The second uncertainty source in the correlation
-        - `magnitude`: Correlation coefficient (numerical value if provided) or qualitative strength description (e.g., "strong", "weak")
-
-        Uncertainty Source is estimated with Estimation Method:
-        - `type`: "ESTIMATED_WITH"
-        - `source`: Uncertainty Sources - The uncertainty being evaluated
-        - `target`: Estimation Methods - The method used to quantify or estimate the magnitude of the uncertainty
-        - `magnitude`: The resulting precision or uncertainty on the uncertainty (e.g., "±0.5%")
-
-        Uncertainty Source is reduced by Estimation Method:
-        - `type`: "REDUCED_BY"
-        - `source`: Uncertainty Sources - The uncertainty being mitigated
-        - `target`: Estimation Methods - The method used to reduce the uncertainty
-        - `magnitude`: Quantitative reduction factor (e.g., "reduced by factor of 2") or before/after values (e.g., "from 3.2% to 1.1%")
-
-        For all:
-        - `relevant_quotes`: A list of at most three direct quotations taken from the text which justify the creation of this relationships according to the prompt and your expert knowledge. Do not provide overly lengthy quotations.
+        1. "affects": when an "uncertainty_source" affects the measured value of an "observable". 
+        2. "estimated_with": when a "method" is used to estimate or otherwise evaluate the impact of a "systematic_uncertainty".
         
         # EXTRACTION PRINCIPLES
 
-        **Verifiable Connections**: Extract relationships that are explicitly stated or strongly implied in the text.
-        **Relationship Completeness**: Capture all details about the nature and magnitude of each relationship.
-        **Correlation Structure**: Pay particular attention to correlation structures between uncertainty sources.
+        Be comprehensive. Extract all relationships between entities that are discussed in the paper. For each relationship, justify its creation by including relevant quotations from the paper.
+
         Focus particularly on:
         - Less obvious connections that may be embedded in technical descriptions
-        - Complete uncertainty propagation chains
+        - The complete uncertainty propagation chain from 
         - Complex correlation structures between different uncertainty sources
         - Temporal or kinematic dependence of relationships
         - Relationships involving important entities that may have been missed in the initial extraction
@@ -330,28 +305,38 @@ class LHCbPaper():
     
         # OUTPUT FORMAT
 
-        Provide your extraction as a Python list of relationship dictionaries with this structure:
-
-        [
+        Provide your extraction as a Python dictionary with this exact structure:
         {{
-        "type": str,
-        "source": str,
-        "target": str,
-        "relevant_quotes": List[str],
-        "magnitude": str
+        "affects": [
+        {{
+        "relevant_quotes": List[str] - a list of less than 4 direct quotations from the text which justify the creation of this relationship (do not provide overly lengthy quotations),
+        "source": str - "name" attribute from an uncertainty_source entity,
+        "target": str - "name" attribute from an observable entity,
+        "magnitude": str - the quantitative impact expressed as a percentage, absolute value, or relative contribution (if specified in the paper),
+        "dominant": "true"/"false" - does this source of uncertainty dominate the measurement of the observable
+        }},
+        ...
+        ],
+        "estimated_with": [
+        {{
+        "relevant_quotes": List[str] - a list of less than 4 direct quotations from the text which justify the creation of this relationship (do not provide overly lengthy quotations),
+        "source": str - "name" attribute from an "uncertainty_source" entity,
+        "target": str - "name" attribute from a "method" entity
         }},
         ...
         ]
+        }}
+        Do not provide anything else in your output.
 
         # INPUT
-
-        Entities extracted from text:
-
-        {entities}
 
         Text:
 
         {text}
+
+        Entities:
+
+        {entities}
 
         # OUTPUT
         """
@@ -382,7 +367,7 @@ class Entity():
     
     def add_to_graph(self, graph):
         from py2neo import Node
-        neo4j_node = Node(self.type, name=self.name, description=self.description, **self.attributes)
+        neo4j_node = Node(self.type, name=self.name, description=self.description, **{key : repr(value) for key, value in self.attributes.items()})
         graph.create(neo4j_node)
         self._neo4j = neo4j_node
 
@@ -419,8 +404,6 @@ class Relationship():
 
 
 class SystematicsGraph():
-    """_summary_
-    """
 
     def __init__(self):
         self.entities = {}
@@ -456,31 +439,32 @@ class SystematicsGraph():
                 
                 self.add_entity(entity)
 
-                if type in "Measurements/Observables":
+                if type in "observable":
                     relationship = Relationship(paper_entity, "MEASURES", entity)
                     self.add_relationship(relationship)
         
-        for dict in paper.relationships:
-            relationship_dict = copy.deepcopy(dict)
+        for type in paper.relationships:
+            for dict in paper.relationships[type]:
+                relationship_dict = copy.deepcopy(dict)
+                
+                source_name = relationship_dict.pop("source")
+                try:  
+                    source = self.get_entity(source_name)
+                except:
+                    print(f"Error loading relationship: \n {dict} \n source {source_name} does not exist")
+                    print(f"Available entities: \n {self.entities} \n\n")
+                    continue
+                
+                target_name = relationship_dict.pop("target")
+                try:
+                    target = self.get_entity(target_name)
+                except:
+                    print(f"Error loading relationship: \n {dict} \n target {target_name} does not exist")
+                    print(f"Available entities: \n {self.entities} \n\n")
+                    continue
             
-            source_name = relationship_dict.pop("source")
-            try:  
-                source = self.get_entity(source_name)
-            except:
-                print(f"Error loading relationship: \n {dict} \n source does not exist")
-                continue
-            
-            type = relationship_dict.pop("type")
-            
-            target_name = relationship_dict.pop("target")
-            try:
-                target = self.get_entity(target_name)
-            except:
-                print(f"Error loading relationship: \n {dict} \n target does not exist")
-                continue
-        
-            relationship = Relationship(source, type, target, relationship_dict)
-            self.add_relationship(relationship)
+                relationship = Relationship(source, type, target, relationship_dict)
+                self.add_relationship(relationship)
     
     def push_to_neo4j(self, uri, username, password):
         from py2neo import Graph
@@ -494,7 +478,7 @@ class SystematicsGraph():
         for relationship in self.relationships:
             relationship.add_to_graph(graph)
 
-    def cluster_entities(self, entities: list[Entity], threshold: float = 0.8):
+    def cluster_entities(self, entities: list[Entity], threshold: float = 0.75):
         names = []
         descriptions = []
         for entity in entities:
@@ -530,18 +514,18 @@ class SystematicsGraph():
             entities_str += f"  Description: {entity.description}\n"
             entities_str += f"  Attributes: {entity_attrs}\n\n"
         
-        prompt = f"""You are an expert in particle physics and knowledge representation.
+        prompt = f"""You are an expert physicist specialized in building knowledge graphs of systematic uncertainties in particle physics publications.
         
         # TASK
         
-        Merge the following similar entities from a physics knowledge graph into one cohesive entity that synthesizes their information.
+        Merge the following similar entities from a particle physics knowledge graph into one entity. The scope of the entity may need to be made broader to capture all of the sub-entities being merged into it.
         
         # OUTPUT REQUIREMENTS
         
         Create a single merged entity that:
-        1. Has a standardized name that best represents all entities
+        1. Has a name that best represents all of the entities
         2. Contains a comprehensive description synthesizing all relevant details
-        3. Combines all unique attributes from source entities (keeping the most precise values when attributes overlap)
+        3. Combines all attributes from the source entities
         
         # OUTPUT FORMAT
         
@@ -564,15 +548,12 @@ class SystematicsGraph():
         response = None
         try:
             response = (await llm.acomplete(prompt)).text
-            # Extract the dictionary from the response
-            # Find the opening and closing braces
             start = response.find("{")
             end = response.rfind("}") + 1
             dict_text = response[start:end]
             
             merged_data = eval(dict_text)
             
-            # Create a new merged entity
             base_entity = cluster_entities[0]
             merged_entity = Entity(
                 name=merged_data["name"],
@@ -585,7 +566,6 @@ class SystematicsGraph():
         except Exception as e:
             print(f"Error in entity merging: {e}")
             print(f"LLM response: {response}")
-            # Fallback to using the first entity if LLM fails
             return cluster_entities[0]
 
     async def generalize_entities_with_llm(self, cluster_entities: List[Entity], cluster_id: int) -> Entity:
@@ -600,7 +580,7 @@ class SystematicsGraph():
             entities_str += f"  Description: {entity.description}\n"
             entities_str += f"  Attributes: {entity_attrs}\n\n"
         
-        prompt = f"""You are an expert in particle physics and knowledge graph taxonomy.
+        prompt = f"""You are an expert physicist specialized in building knowledge graphs of systematic uncertainties in particle physics publications.
         
         # TASK
         

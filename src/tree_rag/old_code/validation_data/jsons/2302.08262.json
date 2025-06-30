@@ -1,0 +1,24 @@
+{
+    "What is the dominant systematic uncertainty?": [
+                [81, 82],
+                [90, 90]
+            ],
+    "How large is the statistical uncertainty relative to the nominal value?": [
+                [100, 102]
+        ],
+    "How many resonances does the model contain?": [
+        [70, 70],
+        [80, 80]
+    ],
+    "Is this result compatible with the SM?": [
+        [104, 109],
+        [111, 113],
+        [118, 118],
+        [122, 122]
+    ],
+    "How is the efficiency modelled?": [
+        [19, 19],
+        [47, 47],
+        [72, 72]
+    ]
+}

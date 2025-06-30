@@ -1,0 +1,34 @@
+{
+    "What is the dominant systematic uncertainty?": [
+                [145, 146]
+            ],
+    "How large is the statistical uncertainty relative to the nominal value?": [
+                [206, 209],
+                [213, 213],
+                [244, 250]
+        ],
+    "How many resonances does the model contain?": [],
+    "Is this result compatible with the SM?": [
+        [201, 201],
+        [217, 217],
+        [227, 230]
+    ],
+    "What are the dangerous backgrounds in this analysis?": [
+        [83, 84],
+        [86, 86],
+        [88, 88],
+        [90, 93],
+        [101, 101]
+    ],
+    "Why does this analysis not simply do an angular fit?": [
+        [34, 34],
+        [113, 113]
+    ],
+    "How is the efficiency modelled?": [
+        [119, 126]
+    ],
+    "How large is the signal purity in the analysis?": [
+        [98, 98],
+        [240, 243]
+    ]
+}

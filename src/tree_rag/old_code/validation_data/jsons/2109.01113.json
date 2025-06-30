@@ -1,0 +1,23 @@
+{
+    "What is the dominant systematic uncertainty?": [
+        [391, 391],
+        [354, 356]
+    ],
+    "What decay is used in this measurement?": [
+        [19, 19]
+    ],
+    "How large is the statistical uncertainty relative to the nominal value?": [
+        [385, 386]
+    ],
+    "Is this result compatible with the SM?": [
+        [5, 7],
+        [387, 388]
+    ],
+    "How much data was analysed?": [
+        [55, 55],
+        [76, 76],
+        [80, 80],
+        [84, 84],
+        [381, 381]
+    ]
+}

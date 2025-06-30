@@ -1,6 +1,5 @@
 import regex as re
 import csv
-import expand_latex_macros
 import signal
 import time
 import os
@@ -10,6 +9,7 @@ from itertools import chain
 from tqdm import tqdm
 from functools import partial
 from pathlib import Path
+import expand_latex_macros
 
 def remove_headers(tex):
     """
@@ -158,6 +158,97 @@ def remove_double_brackets(input_string):
         input_string = new_str
     return input_string
 
+def clean_latex_spacing(text):
+
+    # Replace linebreak \\ with newline
+    text = re.sub(r"\s+\\\\(\[\s*[^\]]*\s*\])?\s+", "\n", text)
+    # Remove lone \
+    text = re.sub(r"\s+\\\s+", " ", text)
+
+    # Pattern to match \mskip, \hskip, \vskip, etc. with their parameters
+    spacing_pattern = r'\\[hvmtb]?skip\s+(-?\d*\.?\d*)(mu|pt|in|cm|mm|em|ex)?'
+    # Pattern for more general spacing commands like \, \; \: \! \quad \qquad
+    other_spacing = r'\\[,;:!]|\\(quad|qquad)\b'
+    # Pattern for space \␣ (backslash followed by space)
+    backslash_space = r'\\\s'
+    # Pattern for phantom spacing commands
+    phantom_pattern = r'\\[hv]?phantom(\{(?:[^{}]|(?1))*\})'
+    
+    # First remove the spacing commands with parameters
+    text = re.sub(spacing_pattern, ' ', text)
+    # Then remove the other spacing commands
+    text = re.sub(other_spacing, ' ', text)
+    # Remove backslash space
+    text = re.sub(backslash_space, ' ', text)
+    # Remove phantom spacing commands
+    text = re.sub(phantom_pattern, ' ', text)
+    
+    return text
+
+def improve_latex_symbol_consistency(tex):
+
+    upgreek_to_greek = {
+        # Lowercase letters
+        "\\upalpha": "\\alpha",
+        "\\upbeta": "\\beta",
+        "\\upgamma": "\\gamma",
+        "\\updelta": "\\delta",
+        "\\upepsilon": "\\epsilon",
+        "\\upvarepsilon": "\\varepsilon",
+        "\\upzeta": "\\zeta",
+        "\\upeta": "\\eta",
+        "\\uptheta": "\\theta",
+        "\\upvartheta": "\\vartheta",
+        "\\upiota": "\\iota",
+        "\\upkappa": "\\kappa",
+        "\\uplambda": "\\lambda",
+        "\\upmu": "\\mu",
+        "\\upnu": "\\nu",
+        "\\upxi": "\\xi",
+        "\\upomicron": "\\omicron",
+        "\\uppi": "\\pi",
+        "\\upvarpi": "\\varpi",
+        "\\uprho": "\\rho",
+        "\\upvarrho": "\\varrho",
+        "\\upsigma": "\\sigma",
+        "\\upvarsigma": "\\varsigma",
+        "\\uptau": "\\tau",
+        "\\upupsilon": "\\upsilon",
+        "\\upphi": "\\phi",
+        "\\upvarphi": "\\varphi",
+        "\\upchi": "\\chi",
+        "\\uppsi": "\\psi",
+        "\\upomega": "\\omega",
+        
+        # Uppercase letters
+        "\\upGamma": "\\Gamma",
+        "\\upDelta": "\\Delta",
+        "\\upTheta": "\\Theta",
+        "\\upLambda": "\\Lambda",
+        "\\upXi": "\\Xi",
+        "\\upPi": "\\Pi",
+        "\\upSigma": "\\Sigma",
+        "\\upUpsilon": "\\Upsilon",
+        "\\upPhi": "\\Phi",
+        "\\upPsi": "\\Psi",
+        "\\upOmega": "\\Omega"
+    }
+
+    for upgreek in upgreek_to_greek:
+        greek = upgreek_to_greek[upgreek].replace("\\", "\\\\")
+        upgreek = upgreek.replace("\\", "\\\\")
+        tex = re.sub(upgreek, greek, tex)
+    
+    tex = re.sub(r"\\rightarrow", r"\\to", tex)
+    tex = re.sub(r"\\mathcal", r"\\cal", tex)
+
+    tex = re.sub(r"\\rangle", ">", tex)
+    tex = re.sub(r"\\langle", "<", tex)
+    tex = re.sub(r"\\prime", "'", tex)
+    tex = re.sub(r"\\colon", ":", tex)
+
+    return tex
+
 def get_command_mappings(tex_path, timeout_seconds=30):
     def timeout_handler(signum, frame):
         raise TimeoutError(f"Execution timed out while processing {tex_path}")
@@ -187,10 +278,10 @@ def clean_and_save_tex_file(tex_path, cleaned_tex_dir, command_mappings, section
         tex = remove_boilerplate(tex)
         tex = remove_lhcb_content(tex)
         tex = remove_section_content(tex, sections_to_remove)
-
         tex = expand_latex_macros.sub_macros_for_defs(tex, command_mappings)
-        tex = expand_latex_macros.clean_up_formatting(tex)
+        tex = clean_latex_spacing(tex)
         tex = remove_double_brackets(tex)
+        tex = improve_latex_symbol_consistency(tex)
         # Remove excessive newlines, spaces, and all math mode declarations $
         tex = re.sub(r"\n[\s]+", "\n", tex)
         tex = re.sub(r"[ \t\r\f]+", " ", tex)
@@ -223,6 +314,8 @@ def clean_and_expand_macros(tex_dir, cleaned_tex_dir, sections_to_remove=[]):
         results = list(tqdm(executor.map(curried_clean_and_save_tex_file, tex_paths), 
                             total=len(tex_paths), 
                             desc=f"Cleaning tex files and saving to {cleaned_tex_dir}"))
+        
+    return command_mappings
 
 if __name__ == '__main__':
     tex_dir = "/work/submit/mcgreivy/beauty-in-stats/src/scraper/data/expanded_tex/"
