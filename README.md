@@ -1,3 +1,5 @@
+<img src="./assets/beauty-in-stats-logo.png" alt="BeautyInStats Logo" width="1000"/>
+
 # LHCb Corpus
 
 Instructions to download the cleaned and preprocessed corpus of all LHCb papers: `./src/scraper/README.md`
