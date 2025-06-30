@@ -8,4 +8,4 @@ Instructions to construct the database of summarized paper trees and use the Tre
 
 # Graph RAG
 
-Instructions: `./src/graph-rag/README.md`
+Instructions to construct the knowledge graph, push to neo4j, and use the GraphRAG: `./src/graph-rag/README.md`
