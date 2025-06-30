@@ -1425,6 +1425,10 @@ IMPORTANT: Provide ONLY the Python list in your response. Do not include any exp
                     
                     iteration_merges += 1
             
+            
+            num_entities = len(entities)
+            num_removed = len(entities_to_remove)
+            
             # Remove all merged entities
             for entity in entities_to_remove:
                 self.entities.pop(entity.name, None)
@@ -1433,13 +1437,13 @@ IMPORTANT: Provide ONLY the Python list in your response. Do not include any exp
             if verbose:
                 print(f"\n--- Iteration {iteration} Results ---")
                 print(f"Merges performed: {iteration_merges}")
-                print(f"Entities removed: {len(entities_to_remove)}")
+                print(f"Entities removed: {num_removed}")
                 print(f"Remaining entities: {len(self.entity_types[type])}")
             
             total_merges += iteration_merges
             
             # Stop if no merges were made in this iteration
-            if iteration_merges < stop_ratio * len(self.entities):
+            if num_removed < stop_ratio * num_entities:
                 if verbose:
                     print("Too few merges made in this iteration. Stopping.")
                 break

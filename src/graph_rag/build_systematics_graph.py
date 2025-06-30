@@ -76,7 +76,7 @@ async def process_papers_async(cache_dir, threads=6, timeout=360):
             paper = pickle.load(f)
 
         """Process a single paper with semaphore limiting."""
-        if hasattr(paper, "relationships") and len(paper.relationships) > 0:
+        if (hasattr(paper, "relationships") and hasattr(paper, "entities")) and (len(paper.relationships) > 0 or len(paper.entities) > 0):
             tqdm.write(f"Already processed {paper.arxiv_id}, skipping...")
             pbar.update(1)
             return
