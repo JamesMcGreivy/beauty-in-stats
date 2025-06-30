@@ -129,16 +129,16 @@ def build_graph(papers):
     return graph
 
 
-def merge_entities(graph, max_cluster_size):
+def merge_entities(graph, stop_ratio):
     print("Merging similar entities...")
     
     # Merge uncertainty sources
     print("Merging uncertainty sources...")
-    graph.merge_entity_type("uncertainty_source", ["type"], max_cluster_size, True)
+    graph.merge_entity_type("uncertainty_source", ["type"], stop_ratio=stop_ratio, verbose=True)
     
     # Merge methods
     print("Merging methods...")
-    graph.merge_entity_type("method", [], max_cluster_size, True)
+    graph.merge_entity_type("method", [], stop_ratio=stop_ratio, verbose=True)
 
 
 def push_to_neo4j(graph, uri, username, password):
@@ -165,7 +165,7 @@ def main():
     # Uncomment these if you want to use Neo4j or graph processing later
     papers = load_papers(cache_dir)
     graph = build_graph(papers)
-    merge_entities(graph, 50)
+    merge_entities(graph, 0.2)
 
     # Need a neo4j account
     NEO4J_URI = os.getenv("NEO4J_URI")

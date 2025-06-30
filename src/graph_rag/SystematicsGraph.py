@@ -1322,8 +1322,7 @@ IMPORTANT: Provide ONLY the Python list in your response. Do not include any exp
             print(f"LLM Response: {response}")
             return []  # Fall back to no merging
 
-    async def merge_entity_type_async(self, type: str, identical_attributes: List[str], 
-                                    max_cluster_size: int = 50, verbose: bool = False):
+    async def merge_entity_type_async(self, type: str, identical_attributes: List[str], stop_ratio: float, max_cluster_size: int, verbose: bool):
         """
         Iterative clustering with dynamic threshold selection.
         Each iteration clusters remaining entities, uses LLM to make merge decisions,
@@ -1440,9 +1439,9 @@ IMPORTANT: Provide ONLY the Python list in your response. Do not include any exp
             total_merges += iteration_merges
             
             # Stop if no merges were made in this iteration
-            if iteration_merges == 0:
+            if iteration_merges < stop_ratio * len(self.entities):
                 if verbose:
-                    print("No merges made in this iteration. Stopping.")
+                    print("Too few merges made in this iteration. Stopping.")
                 break
             
             iteration += 1
@@ -1455,9 +1454,8 @@ IMPORTANT: Provide ONLY the Python list in your response. Do not include any exp
             print(f"Total merges: {total_merges}")
             print(f"Final number of {type} entities: {len(self.entity_types[type])}")
 
-    def merge_entity_type(self, type: str, identical_attributes: List[str] = [], 
-                        max_cluster_size: int = 50, verbose: bool = False):
+    def merge_entity_type(self, type: str, identical_attributes: List[str] = [], stop_ratio: float = 0.1, max_cluster_size: int = 100, verbose: bool = False):
         """
         Main entry point for iterative entity merging with dynamic threshold selection.
         """
-        asyncio.run(self.merge_entity_type_async(type, identical_attributes, max_cluster_size, verbose))
+        asyncio.run(self.merge_entity_type_async(type, identical_attributes, stop_ratio, max_cluster_size, verbose))
