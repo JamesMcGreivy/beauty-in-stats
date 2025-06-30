@@ -141,12 +141,6 @@ def merge_entities(graph, stop_ratio):
     graph.merge_entity_type("method", [], stop_ratio=stop_ratio, verbose=True)
 
 
-def push_to_neo4j(graph, uri, username, password):
-    print(f"Pushing graph to Neo4j at {uri}")
-    graph.push_to_neo4j(uri, username, password)
-    print("Successfully pushed graph to Neo4j")
-
-
 def main():
     parser = argparse.ArgumentParser(description="Process and cache paper data.")
     parser.add_argument('--build_cache', action='store_true', help='Build or rebuild the paper cache. This will delete ALL processed')
@@ -168,10 +162,10 @@ def main():
     merge_entities(graph, 0.2)
 
     # Need a neo4j account
-    NEO4J_URI = os.getenv("NEO4J_URI")
+    NEO4J_URI = "neo4j+s://2d257b33.databases.neo4j.io"
     NEO4J_USERNAME = os.getenv("NEO4J_USERNAME")
     NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
-    push_to_neo4j(graph, NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD)
+    graph.push_to_neo4j(NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD)
 
 if __name__ == "__main__":
     main()  

@@ -118,7 +118,7 @@ Connects observables to the decay channels used in their measurement
 
 3. Always check the content of a string using o.type CONTAINS "type". DO NOT use o.type = "type" for string comparison.
 
-4. You are FORBIDDEN from querying on the n.description attribute of a node. Instead, you MUST use the n.embedding attribute alongside the function vector.similarity.cosine(embedding, embedding) where the query embedding is wrapped in $("query string..."). You should order results with larger similarity being more relevant.
+4. You are FORBIDDEN from querying directly on the n.description attribute of a node. Instead, you MUST use the n.embedding attribute alongside the function vector.similarity.cosine(embedding, embedding) where the query embedding is wrapped in $("query string..."). You should order results with larger similarity being more relevant.
 Template: 
 - "WITH vector.similarity.cosine(n.embedding, $("describe what you are looking for inside of the description...")) AS similarity"
 
@@ -137,6 +137,8 @@ Example:
 (...rest of query given conditions...) MATCH (o:observable)-[r:affects]-(u:uncertainty_source)-[]-(m:method) RETURN u.name as name, u.description as description, COLLECT(DISTINCT [m.name, m.description]) as methods, AVG(DISTINCT r.ranking) as avg_ranking ORDER BY avg_ranking ASC LIMIT 10
 
 7. Always return the arxiv_id of relevant entities in order to provide citations for the user to look in for more detailed information answering their query. You MUST return arxiv_id in every single query without fail.
+
+8. Always return n.description attributes when possible. This will give more context to the user.
 
 # EXAMPLES
 
@@ -223,7 +225,7 @@ Your response should:
 4. If certain parts of the query are unanswered by the results, acknowledge this rather than filling gaps with assumed information.
 6. Cite the sources in your answer whenever possible using the arxiv ids returned from the query. For example: "...trigger efficiency corrections are estimated via the TISTOS method [2307.09427, 2404.19510, 2404.03375], a technique used to..."
 
-Respond with a brief summary of the key points which answer the query (including in-text arxiv_id citations). If relevant, you may also include a discussion of any parts of the query that are unanswered by the results. Do not respond with anything else. Your answer should not be longer than a couple of short paragraphs.
+Respond with a brief summary of the key points which answer the query (including in-text arxiv_id citations). If relevant, you may also include a discussion of any parts of the query that are unanswered by the results. Do not respond with anything else. Your answer should not be longer than a couple of short paragraphs. You should incorporate the description fields to build context, rather than just listing off query results without context.
 
 Original Query:
 {query}
