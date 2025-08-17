@@ -1,0 +1,70 @@
+{
+  "Nodes": {
+    "paper": {
+      "name": "str (ArXiv ID)",
+      "description": "str (full abstract)",
+      "embedding": "list[float] (sentence embedding of abstract)",
+      "run": "<`run1`, `run2`, `run1,run2`, `run3`, `ift`>",
+      "strategy": "<`angular_analysis`, `amplitude_analysis`, `search`, `other`>"
+    },
+
+    "observable": {
+      "name": "str (exact observable name)",
+      "arxiv_id": "str (source paper ArXiv ID)",
+      "type": "<`branching_fraction`, `branching_ratio`, `physical_constant`, `angular_observable`, `functional_dependence`>",
+      "value": "str (numerical value with uncertainties as quoted)",
+      "embedding": "list[float] (sentence embedding of name + context)"
+    },
+
+    "decay": {
+      "name": "str (full decay description)",
+      "arxiv_id": "str (source paper ArXiv ID)", 
+      "production": "<`p-p`, `Pb-Pb`, `p-Pb`, `Xe-Xe`, `O-O`, `Pb-Ar`, `p-O`>",
+      "parent": "str (initial state particle using exact particle notation)",
+      "children": "str (space-separated final state particles using exact notation)"
+    },
+
+    "uncertainty_source": {
+      "name": "str (exact uncertainty name from paper)",
+      "description": "str (2-3 sentence physical explanation)",
+      "arxiv_id": "str (source paper ArXiv ID)",
+      "type": "<`statistical`, `internal`, `external`>",
+      "embedding": "list[float] (sentence embedding of description)"
+    },
+
+    "method": {
+      "name": "str (method name)",
+      "description": "str (methodological approach explanation)",
+      "arxiv_id": "str (source paper ArXiv ID)",
+      "embedding": "list[float] (sentence embedding of description)"
+    }
+  },
+
+  "Relationships": {
+    "determines": {
+      "source": "Node(paper)",
+      "target": "Node(observable)",
+      "description": "Paper measures/determines this observable"
+    },
+
+    "affects": {
+      "source": "Node(uncertainty_source)", 
+      "target": "Node(observable)",
+      "ranking": "int (importance rank: 1=most important, 2=second, etc.)",
+      "magnitude": "str (exact uncertainty contribution as stated in paper)",
+      "description": "How this uncertainty affects the observable measurement"
+    },
+
+    "estimates": {
+      "source": "Node(method)",
+      "target": "Node(uncertainty_source)", 
+      "description": "Method used to quantify this uncertainty source"
+    },
+
+    "measured_with": {
+      "source": "Node(observable)",
+      "target": "Node(decay)",
+      "description": "Observable measured using this decay channel"
+    }
+  }
+}

@@ -2,50 +2,51 @@ from typing import Optional, List, Dict, Any
 from pathlib import Path
 import requests
 import tarfile
-from pydantic import BaseModel, ConfigDict
-from loguru import logger
 import subprocess
 import os
 from tqdm import tqdm
 from core.models import LHCbPaper
 import time
 import shutil
-import tarfile
+from loguru import logger
+
+import settings
 
 class InspireClient:
     """Client for interacting with the INSPIRE-HEP API."""
 
     def __init__(
         self,
-        abstract_dir: Path = Path("data/abstracts"),
-        pdf_dir: Path = Path("data/pdfs"),
-        source_dir: Path = Path("data/source"),
-        expanded_tex_dir: Path = Path("data/expanded_tex"),
+        abstract_dir: Path = settings.ABSTRACT_DIR,
+        pdf_dir: Path = settings.PDF_DIR,
+        source_dir: Path = settings.SOURCE_DIR,
+        raw_tex_dir: Path = settings.RAW_TEX_DIR,
     ) -> None:
         """Initialize the INSPIRE-HEP client.
 
         Parameters
         ------------
-        abstract_dir : Path, default=Path("data/abstracts")
+        abstract_dir : Path
             Directory for storing paper abstracts
-        pdf_dir : Path, default=Path("data/pdfs")
+        pdf_dir : Path
             Directory for storing PDF versions
-        source_dir : Path, default=Path("data/source")
+        source_dir : Path
             Directory for storing LaTeX source files
-        expanded_tex_dir : Path, default=Path("data/expanded_tex")
+        raw_tex_dir : Path
             Directory for storing expanded LaTeX files
         """
+
         self.base_url = "https://inspirehep.net/api"
         self.abstract_dir = abstract_dir
         self.pdf_dir = pdf_dir
         self.source_dir = source_dir
-        self.expanded_tex_dir = expanded_tex_dir
+        self.raw_tex_dir = raw_tex_dir
 
         for directory in [
             self.abstract_dir,
             self.pdf_dir,
             self.source_dir,
-            self.expanded_tex_dir,
+            self.raw_tex_dir,
         ]:
             directory.mkdir(parents=True, exist_ok=True)
 
@@ -90,7 +91,7 @@ class InspireClient:
 
     def _fetch_papers(self, params: dict) -> List[LHCbPaper]:
         """Internal method to handle API requests and paper object creation.
-        Handles pagination to fetch all results when no size limit is specified.
+        Handles pagination to fetch all results.
         """
         # Copy params so we don't modify the original
         params = params.copy()
@@ -103,51 +104,50 @@ class InspireClient:
         total_hits = data['hits']['total']
         logger.info(f"Total papers available: {total_hits}")
         
-        if 'size' not in params:
-            # No limit specified - fetch all papers
-            params['size'] = 250  # API maximum per request
-            papers = []
+        # Determine how many papers we actually want
+        max_results = params.get('size', total_hits)  # If no size specified, get all
+        
+        # Set page size to API maximum
+        params['size'] = settings.REQUEST_CONFIG["max_page_size"]
+        
+        papers = []
+        papers_fetched = 0
+        
+        # Calculate total pages needed
+        total_pages = (min(max_results, total_hits) + 249) // 250  # Ceiling division
+        
+        for page in tqdm(range(1, total_pages + 1), desc="Fetching LHCb papers from INSPIRE API"):
+            params['page'] = page
+            response = requests.get(f"{self.base_url}/literature", params=params)
+            response.raise_for_status()
             
-            for page in tqdm(range(1, (total_hits // 250) + 2), desc="Fetching LHCb papers from INSPIRE API"):
-                params['page'] = page
-                response = requests.get(f"{self.base_url}/literature", params=params)
-                response.raise_for_status()
+            hits = response.json()['hits']['hits']
+            if not hits:  # No more results
+                break
                 
-                for hit in response.json()['hits']['hits']:
-                    metadata = hit['metadata']
-                    arxiv_id = None
-                    if 'arxiv_eprints' in metadata and metadata['arxiv_eprints']:
-                        arxiv_id = metadata['arxiv_eprints'][0].get('value')
+            for hit in hits:
+                if papers_fetched >= max_results:
+                    break
+                    
+                metadata = hit['metadata']
+                arxiv_id = None
+                if 'arxiv_eprints' in metadata and metadata['arxiv_eprints']:
+                    arxiv_id = metadata['arxiv_eprints'][0].get('value')
 
-                    print(arxiv_id)
-                    print(metadata)
-
-                    paper = LHCbPaper(
-                        title=metadata['titles'][0]['title'],
-                        citations=metadata.get('citation_count', 0),
-                        arxiv_id=arxiv_id,
-                        abstract=self.get_arxiv_abstract(metadata.get('abstracts', [])),
-                        arxiv_pdf=f"https://arxiv.org/pdf/{arxiv_id}.pdf" if arxiv_id else None,
-                        latex_source=f"https://arxiv.org/e-print/{arxiv_id}" if arxiv_id else None
-                    )
-                    papers.append(paper)
-                
-                if len(response.json()['hits']['hits']) < 250:
-                    break 
-        else:
-            # Size limit specified - fetch single page
-            papers = [
-                LHCbPaper(
-                    title=hit['metadata']['titles'][0]['title'],
-                    citations=hit['metadata'].get('citation_count', 0),
-                    arxiv_id=hit['metadata']['arxiv_eprints'][0].get('value') if 'arxiv_eprints' in hit['metadata'] and hit['metadata']['arxiv_eprints'] else None,
-                    abstract=self.get_arxiv_abstract(hit['metadata'].get('abstracts', [])),
-                    # Use the locally scoped arxiv_id from the previous line
-                    arxiv_pdf=f"https://arxiv.org/pdf/{hit['metadata']['arxiv_eprints'][0].get('value')}.pdf" if 'arxiv_eprints' in hit['metadata'] and hit['metadata']['arxiv_eprints'] else None,
-                    latex_source=f"https://arxiv.org/e-print/{hit['metadata']['arxiv_eprints'][0].get('value')}" if 'arxiv_eprints' in hit['metadata'] and hit['metadata']['arxiv_eprints'] else None
+                paper = LHCbPaper(
+                    title=metadata['titles'][0]['title'],
+                    citations=metadata.get('citation_count', 0),
+                    arxiv_id=arxiv_id,
+                    abstract=self.get_arxiv_abstract(metadata.get('abstracts', [])),
+                    arxiv_pdf=f"https://arxiv.org/pdf/{arxiv_id}.pdf" if arxiv_id else None,
+                    latex_source=f"https://arxiv.org/e-print/{arxiv_id}" if arxiv_id else None
                 )
-                for hit in data['hits']['hits']
-            ] 
+                papers.append(paper)
+                papers_fetched += 1
+                
+            # Break out of page loop if we have enough papers
+            if papers_fetched >= max_results:
+                break
         
         logger.info(f"Fetching COMPLETE: identified {len(papers)} papers on INSPIRE in TOTAL.")
         return papers
@@ -293,6 +293,7 @@ class InspireClient:
         Optional[Path]
             Path to the expanded LaTeX file, or None if processing failed
         """
+
         if not source_file.exists():
             logger.error(f"Source file not found: {source_file}")
             return None
@@ -327,7 +328,7 @@ class InspireClient:
             logger.error(f"Could not find main TeX file for {paper.arxiv_id}")
             return None
 
-        expanded_tex = (self.expanded_tex_dir / f"{paper.arxiv_id}.tex").resolve()
+        raw_tex = (self.raw_tex_dir / f"{paper.arxiv_id}.tex").resolve()
 
         cwd = Path.cwd()
         try:
@@ -350,8 +351,8 @@ class InspireClient:
                 logger.error("latexpand produced empty output")
                 return None
                 
-            expanded_tex.write_text(result.stdout)
-            return expanded_tex
+            raw_tex.write_text(result.stdout)
+            return raw_tex
 
         except subprocess.CalledProcessError as e:
             logger.error(f"latexpand failed: {e.stderr}")
@@ -405,11 +406,11 @@ class InspireClient:
             }
 
             # Add delay to respect rate limits
-            time.sleep(3)  # Wait between requests
+            time.sleep(settings.REQUEST_CONFIG["delay_between_requests"])  # Wait between requests
 
             response = requests.get(
                 source_url,
-                timeout=30,
+                timeout=settings.REQUEST_CONFIG["timeout"],
                 verify=True,
                 headers=headers
             )
@@ -439,7 +440,7 @@ class InspireClient:
             source_file.write_bytes(response.content)
 
             # Add exponential backoff for retries
-            max_retries = 3
+            max_retries = settings.REQUEST_CONFIG["max_retries"]
             for attempt in range(max_retries):
                 try:
                     expanded_file = self.extract_and_expand_latex(paper, source_file)
